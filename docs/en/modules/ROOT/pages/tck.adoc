@@ -1,8 +1,8 @@
 = MicroProfile Metrics 5.1.1 TCK
-:description: Status, runner execution, in-reactor runner behind the tck profile, M9 jlink smoke test.
+:description: Status, runner execution, standalone out-of-reactor runner, M9 jlink smoke test.
 
 [.lead]
-The official MicroProfile Metrics 5.1.1 TCK (`org.eclipse.microprofile.metrics:microprofile-metrics-api-tck:5.1.1`) validates that an implementation honours the whole spec — exposition formats, scopes, types, configuration. Dirac passes it in full: **127/127 PASS (100 %)**, consolidated in link:{repo-dirac}/src/branch/main/TCK.md[TCK.md]. The runner ships in the `dirac-tck` module, part of the reactor but gated behind the `tck` Maven profile.
+The official MicroProfile Metrics 5.1.1 TCK (`org.eclipse.microprofile.metrics:microprofile-metrics-api-tck:5.1.1`) validates that an implementation honours the whole spec — exposition formats, scopes, types, configuration. Dirac passes it in full: **127/127 PASS (100 %)**, consolidated in link:{repo-dirac}/src/branch/main/TCK.md[TCK.md]. The runner ships as `dirac-tck`, a standalone out-of-reactor module (Model 4.0.0 POM) in this release.
 
 == Status
 
@@ -23,7 +23,7 @@ The consolidated score lives in link:{repo-dirac}/src/branch/main/TCK.md[TCK.md]
 
 == Prerequisites
 
-The artefact `org.eclipse.microprofile.metrics:microprofile-metrics-api-tck:5.1.1` is available on Maven Central. The runner first installs the required Dirac modules in the local M2, then runs the reactor on `dirac-tck` with the `tck` profile.
+The artefact `org.eclipse.microprofile.metrics:microprofile-metrics-api-tck:5.1.1` is available on Maven Central. The runner first installs the required Dirac modules in the local M2, then runs the standalone `dirac-tck` POM.
 
 [source,bash]
 ----
@@ -47,21 +47,21 @@ The script `run-official-tck-mp-metrics-5.1.sh` at the repository root orchestra
 ./run-official-tck-mp-metrics-5.1.sh -Dtest=CounterTest
 ----
 
-The runner installs `dirac-api`, `dirac-core`, `dirac-cdi-vauban` in the local M2 (step 1), then invokes `./mvnw -Ptck,<profile> -pl dirac-tck test` (step 2). The summary report lands in `dirac-tck/target/tck-report.txt`. Direct invocation without the script:
+The runner installs `dirac-api`, `dirac-core`, `dirac-cdi-vauban` in the local M2 (step 1), then invokes the standalone `dirac-tck` POM with the requested profile (step 2). The summary report lands in `dirac-tck/target/tck-report.txt`. Direct invocation without the script:
 
 [source,bash]
 ----
-./mvnw -Ptck -pl dirac-tck test                  # smoke
-./mvnw -Ptck,tck-official -pl dirac-tck test     # full suite
+./mvnw -f dirac-tck/pom.xml -Psmoke test             # smoke
+./mvnw -f dirac-tck/pom.xml -Ptck-official test      # full suite
 ----
 
 == Runner architecture
 
-`dirac-tck` is an **in-reactor module gated behind the `tck` Maven profile** (TCK harmonisation — Dirac is the pilot brick, mirroring the `vidocq-runtime-tck-*` pattern of the Vidocq runtime): a plain `mvn install` neither downloads nor runs anything TCK-related, and the release reactor never sees the module.
+In this release `dirac-tck` is a **standalone out-of-reactor POM** (Model 4.0.0, no `<parent>`): a plain `mvn install` of the reactor neither downloads nor runs anything TCK-related — the module is simply not part of it. The split also decouples the runtime release cycle from the official TCK cycle.
 
 [NOTE]
 ====
-Historically `dirac-tck` was a standalone out-of-reactor POM: ShrinkWrap Maven Resolver 3.3, transitive to the official TCK, could not parse Model 4.1.0 POMs. That constraint disappeared with the workspace-wide migration to Maven 3.9.16 / Model 4.0.0, and the MP Metrics api-tck builds its deployments with `addClass`/`addPackage` only (no ShrinkWrap Maven resolver), so it is safe in-reactor — the same verification already backs `vidocq-runtime-tck-dirac-metrics`.
+`dirac-tck` sits outside the reactor because ShrinkWrap Maven Resolver 3.3, transitive to the official TCK, could not parse the Model 4.1.0 POMs the workspace used at the time. The MP Metrics api-tck builds its deployments with `addClass`/`addPackage` only (no ShrinkWrap Maven resolver), which is what later let the development line reintegrate the runner in-reactor behind a `tck` Maven profile (post-0.2.0), mirroring the `vidocq-runtime-tck-*` pattern.
 ====
 
 Stack assembled by the runner:
